@@ -56,7 +56,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-data class Track(
+data class Track (
     val file: File? = null,
     val streamUrl: String? = null,
     val title: String,
@@ -127,16 +127,16 @@ fun App() {
     var isGaplessEnabled by remember { mutableStateOf(false) }
     var isViewingExtensions by remember { mutableStateOf(false) }
     var selectedExtension by remember { mutableStateOf<Extension?>(null) }
-    
+
     var playbackSpeed by remember { mutableStateOf(1.0f) }
     var pitchWithSpeed by remember { mutableStateOf(false) }
     var bassBoostLevel by remember { mutableStateOf(0) }
 
     val baseBackgroundColor = Color(0xFF151219)
     val currentAppBackgroundColor = if (isOledMode) Color.Black else baseBackgroundColor
-    
+
     val extensions = remember { mutableStateListOf<Extension>(OfflineExtension()) }
-    
+
     var albums by remember { mutableStateOf<List<Album>>(emptyList()) }
     var artists by remember { mutableStateOf<List<Artist>>(emptyList()) }
     var allTracks by remember { mutableStateOf<List<Track>>(emptyList()) }
@@ -149,7 +149,7 @@ fun App() {
     val offlineExtension = remember(extensions) {
         extensions.find { it is OfflineExtension } as? OfflineExtension
     }
-    
+
     val isOfflineEnabled = remember(offlineExtension) {
         derivedStateOf { offlineExtension?.isEnabled ?: true }
     }
@@ -166,7 +166,7 @@ fun App() {
 
     MaterialTheme {
         Surface(
-            color = currentAppBackgroundColor, 
+            color = currentAppBackgroundColor,
             modifier = Modifier.fillMaxSize()
                 .onKeyEvent { keyEvent ->
                     if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.Backspace) {
@@ -186,19 +186,19 @@ fun App() {
             var qualityText by remember { mutableStateOf("") }
             var techDetails by remember { mutableStateOf("") }
             var showQualityPopup by remember { mutableStateOf(false) }
-            
+
             var currentPlaylist by remember { mutableStateOf<List<Track>>(emptyList()) }
             var currentTrackIndex by remember { mutableStateOf(0) }
-            
+
             var isShuffle by remember { mutableStateOf(false) }
             var loopMode by remember { mutableStateOf(0) }
-            
+
             var isPlayerExpanded by remember { mutableStateOf(false) }
             var isSidebarExpanded by remember { mutableStateOf(false) }
             var activePopout by remember { mutableStateOf<FullscreenPopout?>(null) }
             var showArtworkMenu by remember { mutableStateOf(false) }
             var searchQuery by remember { mutableStateOf("") }
-            
+
             var volume by remember { mutableStateOf(getSystemVolume()) }
 
             val navigateToArtist: (String) -> Unit = { name ->
@@ -273,34 +273,22 @@ fun App() {
                     Box(modifier = Modifier.weight(1f)) {
                         when (currentPage) {
                             AppPage.Home -> {
-                                if (isOfflineEnabled.value) {
-                                    if (allTracks.isEmpty() && offlineExtension?.isScanning == false) {
-                                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                Icon(Icons.Default.LibraryMusic, null, tint = Color.Gray, modifier = Modifier.size(64.dp))
-                                                Spacer(Modifier.height(16.dp)); Text("Your library is empty", color = Color.White, style = MaterialTheme.typography.titleLarge); Text("Add a music folder in Settings to start listening", color = Color.Gray); Spacer(Modifier.height(24.dp))
-                                                Button(onClick = { isViewingExtensions = true; currentPage = AppPage.Settings }) { Text("Go to Settings") }
-                                            }
+                                LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                                    item {
+                                        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                            Button(onClick = { if (allTracks.isNotEmpty()) playTrack(allTracks.first(), allTracks) }, modifier = Modifier.weight(1f)) { Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Play All") }
+                                            Button(onClick = { if (allTracks.isNotEmpty()) { isShuffle = true; playTrack(allTracks.random(), allTracks) } }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.1f))) { Icon(Icons.Default.Shuffle, null); Spacer(Modifier.width(8.dp)); Text("Shuffle") }
                                         }
-                                    } else {
-                                        LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                                            item {
-                                                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                                    Button(onClick = { if (allTracks.isNotEmpty()) playTrack(allTracks.first(), allTracks) }, modifier = Modifier.weight(1f)) { Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Play All") }
-                                                    Button(onClick = { if (allTracks.isNotEmpty()) { isShuffle = true; playTrack(allTracks.random(), allTracks) } }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.1f))) { Icon(Icons.Default.Shuffle, null); Spacer(Modifier.width(8.dp)); Text("Shuffle") }
-                                                }
-                                                HomeSectionHeader("Albums") { currentPage = AppPage.AllAlbums }
-                                                LazyRow { items(albums.take(10), key = { "home_" + it.name + it.artist }) { album -> AlbumGridItem(album) { selectedAlbum = album } } }
-                                                Spacer(modifier = Modifier.height(32.dp))
-                                                HomeSectionHeader("Artists") { currentPage = AppPage.AllArtists }
-                                                LazyRow { items(artists.take(10), key = { "home_" + it.name }) { artist -> ArtistGridItem(artist, size = 140.dp) { selectedArtist = artist } } }
-                                                Spacer(modifier = Modifier.height(32.dp))
-                                                HomeSectionHeader("Tracks") { currentPage = AppPage.AllTracks }
-                                                Column { allTracks.take(10).forEach { track -> key(track.title) { TrackItem(track, showArtwork = true) { playTrack(track, allTracks) }; HorizontalDivider(color = Color.White.copy(alpha = 0.05f)) } } }
-                                            }
-                                        }
+                                        HomeSectionHeader("Albums") { currentPage = AppPage.AllAlbums }
+                                        LazyRow { items(albums.take(10), key = { "home_" + it.name + it.artist }) { album -> AlbumGridItem(album) { selectedAlbum = album } } }
+                                        Spacer(modifier = Modifier.height(32.dp))
+                                        HomeSectionHeader("Artists") { currentPage = AppPage.AllArtists }
+                                        LazyRow { items(artists.take(10), key = { "home_" + it.name }) { artist -> ArtistGridItem(artist, size = 140.dp) { selectedArtist = artist } } }
+                                        Spacer(modifier = Modifier.height(32.dp))
+                                        HomeSectionHeader("Tracks") { currentPage = AppPage.AllTracks }
+                                        Column { allTracks.take(10).forEach { track -> key(track.title) { TrackItem(track, showArtwork = true) { playTrack(track, allTracks) }; HorizontalDivider(color = Color.White.copy(alpha = 0.05f)) } } }
                                     }
-                                } else { Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Offline mode disabled", color = Color.Gray) } }
+                                }
                             }
                             AppPage.AllAlbums -> { Column(modifier = Modifier.fillMaxSize().padding(16.dp)) { Text("Albums", color = Color.White, style = MaterialTheme.typography.headlineMedium); Spacer(Modifier.height(16.dp)); LazyVerticalGrid(columns = GridCells.Adaptive(180.dp), modifier = Modifier.fillMaxSize()) { items(albums, key = { it.name + it.artist }) { album -> AlbumGridItem(album) { selectedAlbum = album } } } } }
                             AppPage.AllArtists -> { Column(modifier = Modifier.fillMaxSize().padding(16.dp)) { Text("Artists", color = Color.White, style = MaterialTheme.typography.headlineMedium); Spacer(Modifier.height(16.dp)); LazyVerticalGrid(columns = GridCells.Adaptive(160.dp), modifier = Modifier.fillMaxSize()) { items(artists, key = { it.name }) { artist -> ArtistGridItem(artist, size = 140.dp) { selectedArtist = artist } } } } }
@@ -397,7 +385,7 @@ fun AlbumDetailView(album: Album, onPlay: (Track) -> Unit, onShuffle: () -> Unit
 @Composable
 fun ArtistDetailView(artist: Artist, onAlbumClick: (Album) -> Unit) { Column(modifier = Modifier.fillMaxSize().padding(16.dp)) { Text(artist.name, color = Color.White, style = MaterialTheme.typography.headlineLarge); Spacer(modifier = Modifier.height(16.dp)); LazyVerticalGrid(columns = GridCells.Adaptive(160.dp)) { items(artist.albums) { album -> AlbumGridItem(album) { onAlbumClick(album) } } } } }
 @Composable
-fun TrackItem(track: Track, isCurrent: Boolean = false, showArtwork: Boolean = false, showFeatures: Boolean = false, onClick: () -> Unit) { Row(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).background(if (isCurrent) Color.White.copy(alpha = 0.1f) else Color.Transparent).padding(vertical = 8.dp, horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) { val textColor = if (isCurrent) Color.Cyan else Color.White; if (showArtwork) { val artwork = track.artwork ?: (if (track.albumName != "Unknown Album") null else null) ; artwork?.let { Image(bitmap = org.jetbrains.skia.Image.makeFromEncoded(it).toComposeImageBitmap(), contentDescription = null, modifier = Modifier.size(40.dp).clip(RoundedCornerShape(4.dp)), contentScale = ContentScale.Crop) } ?: Box(modifier = Modifier.size(40.dp).background(Color.DarkGray, RoundedCornerShape(4.dp))) ; Spacer(Modifier.width(16.dp)) } ; Column(modifier = Modifier.weight(1f)) { Text(track.title, color = textColor, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(track.artist, color = Color.Gray, style = MaterialTheme.typography.bodySmall, maxLines = 1) } ; if (showFeatures) { Text(formatDuration(track.duration), color = Color.Gray, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(start = 8.dp)); IconButton(onClick = { track.isFavorite.value = !track.isFavorite.value }) { Icon(Icons.Default.Favorite, null, tint = if (track.isFavorite.value) Color.Red else Color.Gray) } ; IconButton(onClick = { }) { Icon(Icons.Default.MoreHoriz, null, tint = Color.Gray) } } } }
+fun TrackItem(track: Track, isCurrent: Boolean = false, showArtwork: Boolean = false, showFeatures: Boolean = false, onClick: () -> Unit) { Row(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).background(if (isCurrent) Color.White.copy(alpha = 0.1f) else Color.Transparent).padding(vertical = 8.dp, horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) { val textColor = if (isCurrent) Color.Cyan else Color.White; if (showArtwork) { track.artwork?.let { Image(bitmap = org.jetbrains.skia.Image.makeFromEncoded(it).toComposeImageBitmap(), contentDescription = null, modifier = Modifier.size(40.dp).clip(RoundedCornerShape(4.dp)), contentScale = ContentScale.Crop); Spacer(Modifier.width(16.dp)) } }; Column(modifier = Modifier.weight(1f)) { Text("${track.number}. ${track.title}", color = textColor, maxLines = 1, overflow = TextOverflow.Ellipsis) } ; if (showFeatures) { Text(formatDuration(track.duration), color = Color.Gray, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(start = 8.dp)); IconButton(onClick = { track.isFavorite.value = !track.isFavorite.value }) { Icon(Icons.Default.Favorite, null, tint = if (track.isFavorite.value) Color.Red else Color.Gray) } ; IconButton(onClick = { }) { Icon(Icons.Default.MoreHoriz, null, tint = Color.Gray) } } } }
 @Composable
 fun LyricsView(lyrics: List<LyricLine>, currentPosition: Long) { val listState = rememberLazyListState() ; val activeIndex = lyrics.indexOfLast { it.time <= currentPosition }.coerceAtLeast(0) ; LaunchedEffect(activeIndex) { if (lyrics.isNotEmpty()) listState.animateScrollToItem(activeIndex, scrollOffset = -200) } ; LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(24.dp), contentPadding = PaddingValues(vertical = 100.dp) ) { items(lyrics.size) { index -> val lyric = lyrics[index] ; val opacity by animateFloatAsState(if (index == activeIndex) 1f else 0.4f) ; val scale by animateFloatAsState(if (index == activeIndex) 1.1f else 1f) ; Text(text = lyric.text, color = Color.White.copy(alpha = opacity), style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 36.sp), modifier = Modifier.fillMaxWidth().graphicsLayer { scaleX = scale; scaleY = scale }.clickable { }, textAlign = TextAlign.Start) } } }
 @Composable

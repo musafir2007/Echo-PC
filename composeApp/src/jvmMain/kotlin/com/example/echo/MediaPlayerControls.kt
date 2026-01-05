@@ -51,7 +51,8 @@ fun MediaPlayerControls(
     onExpandToggle: () -> Unit,
     onQualityClick: () -> Unit,
     onArtworkClick: () -> Unit,
-    onArtistClick: (String) -> Unit, // New callback
+    onArtistClick: (String) -> Unit,
+    isOledMode: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -60,7 +61,9 @@ fun MediaPlayerControls(
             .widthIn(max = 1000.dp)
             .height(110.dp)
             .clip(RoundedCornerShape(12.dp)),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF2D2833).copy(alpha = 0.9f))
+        colors = CardDefaults.cardColors(
+            containerColor = if (isOledMode) Color.Black else Color(0xFF2D2833).copy(alpha = 0.9f)
+        )
     ) {
         Row(
             modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
@@ -82,7 +85,7 @@ fun MediaPlayerControls(
                     color = Color.Gray, 
                     maxLines = 1, 
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.clickable { onArtistClick(artist) } // Clickable artist name
+                    modifier = Modifier.clickable { onArtistClick(artist) }
                 )
                 
                 Surface(
@@ -106,7 +109,7 @@ fun MediaPlayerControls(
                         onValueChange = { mediaPlayer?.controls()?.setPosition(it) },
                         modifier = Modifier.weight(1f).height(4.dp),
                         colors = androidx.compose.material.SliderDefaults.colors(
-                            thumbColor = Color.Transparent, // Removed circle scrubber
+                            thumbColor = Color.Transparent,
                             activeTrackColor = Color.White,
                             inactiveTrackColor = Color.White.copy(alpha = 0.3f)
                         )
@@ -145,8 +148,6 @@ fun MediaPlayerControls(
                 }
                 
                 Spacer(modifier = Modifier.width(8.dp))
-                
-                // Volume controls REMOVED
                 
                 IconButton(onClick = onExpandToggle) {
                     Icon(Icons.Default.Fullscreen, null, tint = Color.White)

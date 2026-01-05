@@ -5,7 +5,6 @@ import androidx.compose.material.icons.filled.Extension
 import androidx.compose.runtime.mutableStateListOf
 import java.io.File
 import java.net.URI
-import java.net.URL
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.util.jar.JarFile
@@ -17,7 +16,7 @@ object ExtensionManager {
 
     fun installFromFile(file: File): Boolean {
         return try {
-            if (file.extension.lowercase() != "eapk" && file.extension.lowercase() != "jar") return false
+            if (file.extension.lowercase() != "jar") return false
             val target = File(extensionDir, file.name)
             Files.copy(file.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
             loadExtension(target)
@@ -31,6 +30,7 @@ object ExtensionManager {
     fun installFromLink(url: String): Boolean {
         return try {
             val fileName = url.substringAfterLast("/").substringBefore("?")
+            if (!fileName.endsWith(".jar")) return false
             val target = File(extensionDir, fileName)
             URI(url).toURL().openStream().use { input ->
                 Files.copy(input, target.toPath(), StandardCopyOption.REPLACE_EXISTING)
@@ -49,8 +49,6 @@ object ExtensionManager {
             val entries = jarFile.entries()
             var mainClass: String? = null
 
-            // Look for a class that extends Extension or has a manifest entry
-            // For BitFable's extension style, we might look for a specific package or property
             while (entries.hasMoreElements()) {
                 val entry = entries.nextElement()
                 if (entry.name.endsWith(".class")) {
@@ -66,13 +64,11 @@ object ExtensionManager {
                 val loader = URLClassLoader(arrayOf(file.toURI().toURL()), this.javaClass.classLoader)
                 val clazz = loader.loadClass(mainClass)
                 
-                // If it follows the Echo extension pattern
                 if (Extension::class.java.isAssignableFrom(clazz)) {
                     val instance = clazz.getDeclaredConstructor().newInstance() as Extension
                     installedExtensions.add(instance)
                 }
             } else {
-                // Generic fallback if we can't find the class automatically
                 val newExt = object : Extension(
                     name = file.nameWithoutExtension,
                     description = "Dynamic extension from ${file.name}",
@@ -91,7 +87,7 @@ object ExtensionManager {
     }
 
     fun loadAll() {
-        extensionDir.listFiles { f -> f.extension == "eapk" || f.extension == "jar" }?.forEach {
+        extensionDir.listFiles { f -> f.extension == "jar" }?.forEach {
             loadExtension(it)
         }
     }

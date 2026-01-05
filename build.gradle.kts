@@ -5,5 +5,5 @@ plugins {
     alias(libs.plugins.composeMultiplatform) apply false
     alias(libs.plugins.composeCompiler) apply false
     alias(libs.plugins.kotlinMultiplatform) apply false
-    id("com.android.application") version "8.2.0" apply false
+    alias(libs.plugins.androidApplication) apply false
 }

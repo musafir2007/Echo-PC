@@ -33,11 +33,11 @@ suspend fun processFilesToAlbums(mediaFiles: List<File>, onProgress: (Float) -> 
                 chunk.mapNotNull { (folder, files) ->
                     if (folder == null) return@mapNotNull null
                     
-                    val artworkFile = try { AudioFileIO.read(files.first()) } catch (e: Exception) { null }
+                    val artworkFile = try { AudioFileIO.read(files.first()) } catch (_: Exception) { null }
                     val albumArtwork = artworkFile?.tag?.firstArtwork?.binaryData
                     
                     val albumTracks = files.map { file ->
-                        val audioFile = try { AudioFileIO.read(file) } catch (e: Exception) { null }
+                        val audioFile = try { AudioFileIO.read(file) } catch (_: Exception) { null }
                         val tag = audioFile?.tag
                         val header = audioFile?.audioHeader
                         
@@ -58,7 +58,7 @@ suspend fun processFilesToAlbums(mediaFiles: List<File>, onProgress: (Float) -> 
                         }
                         
                         val khz = if (sampleRate >= 1000) "${sampleRate / 1000}khz" else "${sampleRate}Hz"
-                        val bitrateText = if (bitrate > 0) " · ${bitrate} kbps" else ""
+                        val bitrateText = if (bitrate > 0) " · $bitrate kbps" else ""
                         val techDetails = "$format · ${bitsPerSample}Bit-$khz$bitrateText"
                         
                         Track(
@@ -67,7 +67,7 @@ suspend fun processFilesToAlbums(mediaFiles: List<File>, onProgress: (Float) -> 
                             number = tag?.getFirst(FieldKey.TRACK) ?: "0",
                             duration = header?.trackLength?.toLong() ?: 0L,
                             albumName = tag?.getFirst(FieldKey.ALBUM) ?: folder.name,
-                            artist = tag?.getFirst(FieldKey.ALBUM_ARTIST)?.ifEmpty { tag?.getFirst(FieldKey.ARTIST) } ?: "Unknown Artist",
+                            artist = tag?.getFirst(FieldKey.ALBUM_ARTIST)?.ifEmpty { tag.getFirst(FieldKey.ARTIST) } ?: "Unknown Artist",
                             quality = quality,
                             techDetails = techDetails,
                             artwork = albumArtwork // Set artwork for each track
@@ -75,8 +75,8 @@ suspend fun processFilesToAlbums(mediaFiles: List<File>, onProgress: (Float) -> 
                     }
                     
                     val firstTrack = albumTracks.firstOrNull() ?: return@mapNotNull null
-                    val genre = try { artworkFile?.tag?.getFirst(FieldKey.GENRE) ?: "Unknown" } catch(e: Exception) { "Unknown" }
-                    val year = try { artworkFile?.tag?.getFirst(FieldKey.YEAR) ?: "Unknown" } catch(e: Exception) { "Unknown" }
+                    val genre = try { artworkFile?.tag?.getFirst(FieldKey.GENRE) ?: "Unknown" } catch(_: Exception) { "Unknown" }
+                    val year = try { artworkFile?.tag?.getFirst(FieldKey.YEAR) ?: "Unknown" } catch(_: Exception) { "Unknown" }
                     
                     Album(
                         name = firstTrack.albumName,

@@ -22,6 +22,7 @@ fun MediaPlayer(
     streamUrl: String? = null,
     isDolbyAtmosEnabled: Boolean = false,
     isGaplessEnabled: Boolean = false,
+    isDirectOutputEnabled: Boolean = false,
     speed: Float = 1.0f,
     pitchWithSpeed: Boolean = false,
     bassBoost: Int = 0,
@@ -33,24 +34,32 @@ fun MediaPlayer(
 ) {
     val isVideo = file?.extension?.lowercase() in listOf("mp4", "avi", "mov", "mkv")
     
-    val mediaPlayerFactory = remember { 
+    val mediaPlayerFactory = remember(isDolbyAtmosEnabled, isDirectOutputEnabled) { 
         NativeDiscovery().discover()
         try {
             val args = mutableListOf(
                 "--no-audio-time-stretch", 
                 "--audio-replay-gain-mode=none", 
                 "--no-volume-save", 
-                "--audio-filter=none", 
-                "--audio-resampler=none",
                 "--input-repeat=0",
                 "--no-video-title-show",
-                "--network-caching=3000" // Buffer for streaming
+                "--network-caching=3000"
             )
-            if (isDolbyAtmosEnabled) {
+            
+            if (isDirectOutputEnabled || isDolbyAtmosEnabled) {
+                args.add("--aout=wasapi")
                 args.add("--wasapi-exclusive")
-                args.add("--wasapi-passthrough=1")
-                args.add("--spdif")
+                args.add("--audio-filter=none")
+                args.add("--audio-resampler=none")
+                if (isDolbyAtmosEnabled) {
+                    args.add("--wasapi-passthrough=1")
+                    args.add("--spdif")
+                }
+            } else {
+                // Use normal VLC resamplers and processing
+                args.add("--audio-filter=equalizer")
             }
+            
             MediaPlayerFactory(*args.toTypedArray())
         } catch (e: Exception) {
             MediaPlayerFactory()
@@ -64,15 +73,17 @@ fun MediaPlayer(
 
     LaunchedEffect(speed) { mediaPlayer.controls().setRate(speed) }
 
-    LaunchedEffect(bassBoost) {
-        try {
-            val equalizer = mediaPlayerFactory.equalizer().newEqualizer()
-            val boostAmount = bassBoost.toFloat() * 2.5f 
-            equalizer.setAmp(0, boostAmount)
-            equalizer.setAmp(1, boostAmount * 0.8f)
-            equalizer.setAmp(2, boostAmount * 0.4f)
-            mediaPlayer.audio().setEqualizer(equalizer)
-        } catch (e: Exception) {}
+    LaunchedEffect(bassBoost, isDirectOutputEnabled) {
+        if (!isDirectOutputEnabled) {
+            try {
+                val equalizer = mediaPlayerFactory.equalizer().newEqualizer()
+                val boostAmount = bassBoost.toFloat() * 2.5f 
+                equalizer.setAmp(0, boostAmount)
+                equalizer.setAmp(1, boostAmount * 0.8f)
+                equalizer.setAmp(2, boostAmount * 0.4f)
+                mediaPlayer.audio().setEqualizer(equalizer)
+            } catch (e: Exception) {}
+        }
     }
 
     DisposableEffect(mediaPlayer, mediaPlayerFactory) {
@@ -111,7 +122,7 @@ fun MediaPlayer(
                                 val bitsPerSample = header.bitsPerSample
                                 val sampleRate = header.sampleRateAsNumber
                                 quality = if (bitsPerSample >= 16) "Lossless" else "Standard"
-                                techDetails = "${header.format} · ${bitsPerSample}Bit"
+                                techDetails = "${header.format} · ${bitsPerSample}Bit · ${sampleRate}Hz"
                             }
                         } catch (e: Exception) {}
                     }
